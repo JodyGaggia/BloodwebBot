@@ -25,7 +25,7 @@ void PurchasePriorityNodes(std::vector<Node>& bloodwebNodes, std::vector<std::re
 
 		// Purchase nodes from base up
 		for (int i = nodeTree.size() - 1; i >= 0; i--) {
-			if (CheckForManualStop()) return;
+			if (CheckForManualStop() || bloodpoints <= 0) return;
 
 			PurchaseNode(nodeTree[i], bloodwebScreenshot, bloodwebNodes);
 
@@ -37,7 +37,7 @@ void PurchasePriorityNodes(std::vector<Node>& bloodwebNodes, std::vector<std::re
 
 	// Purchase available nodes until the bloodweb is complete
 	PurchaseImmediatelyCheapestNodes(bloodwebNodes, bloodwebScreenshot);
-	if (CheckForManualStop()) return;
+	if (CheckForManualStop() || bloodpoints <= 0) return;
 
 	// Empty our vectors
 	// Note: we use references not pointers so we don't need to deallocate the memory
@@ -45,6 +45,8 @@ void PurchasePriorityNodes(std::vector<Node>& bloodwebNodes, std::vector<std::re
 	priorityNodes.clear();
 
 	Sleep(2000);
+
+	std::cout << "Bloodweb complete." << std::endl;
 
 	FillNodesVector(bloodwebNodes, bloodwebScreenshot);
 	PurchasePriorityNodes(bloodwebNodes, priorityNodes, bloodwebScreenshot);
@@ -59,6 +61,9 @@ std::vector<Node*> GetNodeTree(Node& leafNode) {
 	// Add the leaf node to the vector
 	nodeTree.push_back(&leafNode);
 
+	// Return immediately if in the first ring
+	if (leafNode.GetRing() == 1) return nodeTree;
+
 	// Add the leaf node's parent to the vector
 	Node* parentNode = leafNode.GetParentNodes()[0];
 	nodeTree.push_back(parentNode);
@@ -71,26 +76,21 @@ std::vector<Node*> GetNodeTree(Node& leafNode) {
 	return nodeTree;
 }
 
+// This really isn't efficient but oh well
 void PurchaseImmediatelyCheapestNodes(std::vector<Node>& bloodwebNodes, cv::Mat bloodwebScreenshot) {
 	while (true) {
-		int availableAndUnpurchasable = 0;
+		for (int i = 0; i < bloodwebNodes.size(); i++) {
+			if (CheckForManualStop() || bloodpoints <= 0) return; // Stop if user says so
 
-		for (Node& node : bloodwebNodes) {
-			if (CheckForManualStop()) return;
-
-			// Skip this node if it's not currently purchasable
-			if (!node.GetPurchaseAvailability()) {
-				// If the node hasn't been eaten by the entity yet, it can potentially be purchased in the future
-				if (!node.GetEntityConsumed()) availableAndUnpurchasable++;
-				continue;
+			// Vector is sorted by price so just buy the first purchasable node
+			if (bloodwebNodes[i].GetPurchaseAvailability()) {
+				PurchaseNode(&bloodwebNodes[i], bloodwebScreenshot, bloodwebNodes);
+				break;
 			}
-
-			// Purchase the node...
-			PurchaseNode(&node, bloodwebScreenshot, bloodwebNodes);
+			
+			// If we have iterated through all nodes and not purchased any then return
+			if (i == bloodwebNodes.size() - 1) return;
 		}
-
-		// Exit the loop if all nodes have been purchased
-		if (availableAndUnpurchasable == 0) return;
 	}
 }
 
@@ -103,7 +103,8 @@ void PurchaseImmediatelyCheapestNodes(std::vector<Node>& bloodwebNodes, cv::Mat 
 void PurchaseNode(Node* node, cv::Mat& bloodwebScreenshot, std::vector<Node>& identifiedNodes) {
 	// We've bought this node now
 	SetNodeToPurchased(node);
-	
+	bloodpoints -= rarityToCost.at(node->GetRarity());
+
 	// Set up mouse input type
 	INPUT Input{ 0 };
 	Input.type = INPUT_MOUSE;
@@ -114,7 +115,7 @@ void PurchaseNode(Node* node, cv::Mat& bloodwebScreenshot, std::vector<Node>& id
 	// Set cursor position to node
 	SetCursorPos(nodeLocation.x, nodeLocation.y);
 
-	Sleep(400);
+	Sleep(100);
 
 	// Hold left click for 475ms
 	Input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
@@ -125,20 +126,26 @@ void PurchaseNode(Node* node, cv::Mat& bloodwebScreenshot, std::vector<Node>& id
 	Input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
 	SendInput(1, &Input, sizeof(INPUT));
 
-	// Set cursor to top right of screen
-	// Stop interference with UI popups
-	SetCursorPos(0, 0);
+	//SetCursorPos(nodeLocation.x - 150, nodeLocation.y + 80);
 
 	Sleep(100);
 
-	// FUCK YOU MYSTERY BOXES
-	Input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
-	SendInput(1, &Input, sizeof(INPUT));
-	Sleep(10);
-	Input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
-	SendInput(1, &Input, sizeof(INPUT));
+	for (int i = 0; i < 8; i++) {
+		// FUCK YOU MYSTERY BOXES
+		Input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+		SendInput(1, &Input, sizeof(INPUT));
+		Sleep(20);
+		Input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
+		SendInput(1, &Input, sizeof(INPUT));
 
-	Sleep(900);
+		Sleep(100);
+	}
+
+	// Set cursor to top left of screen
+	// Stop interference with UI popups
+	SetCursorPos(10, 10);
+
+	Sleep(100);
 
 	// Update nodes taken by entity
 	bloodwebScreenshot = ScreenshotBloodweb(IMAGE_ORIGIN_X, IMAGE_ORIGIN_Y, IMAGE_WIDTH, IMAGE_HEIGHT);
@@ -168,6 +175,7 @@ void SetNodeToPurchased(Node* node) {
 
 	// Child nodes are now purchasable
 	for (Node* child : node->GetChildNodes()) {
-		child->SetPurchaseAvailability(true);
+		if(!child->GetEntityConsumed())
+			child->SetPurchaseAvailability(true);
 	}
 }

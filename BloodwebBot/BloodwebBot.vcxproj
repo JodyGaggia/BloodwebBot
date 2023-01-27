@@ -153,13 +153,18 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="BloodwebBot.cpp" />
+    <ClCompile Include="Calibration.cpp" />
+    <ClCompile Include="Constants.cpp" />
+    <ClCompile Include="FileHandler.cpp" />
     <ClCompile Include="Node.cpp" />
     <ClCompile Include="NodeAnalysis.cpp" />
     <ClCompile Include="PurchaseHandler.cpp" />
     <ClCompile Include="Helpers.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Calibration.h" />
     <ClInclude Include="Constants.h" />
+    <ClInclude Include="FileHandler.h" />
     <ClInclude Include="Node.h" />
     <ClInclude Include="NodeAnalysis.h" />
     <ClInclude Include="Helpers.h" />

@@ -35,7 +35,7 @@ public:
 	int GetRing();
 	// Set if the node has been taken by the entity or purchased by the user
 	void SetEntityConsumed(bool canAccess);
-	// bool: Returns if the node has been taken by the entity or purchased by the user
+	// bool: Returns true if the node has been taken by the entity or purchased by the user
 	bool GetEntityConsumed();
 	// Set if the node is currently purchasable
 	void SetPurchaseAvailability(bool canPurchase);

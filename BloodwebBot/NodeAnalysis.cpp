@@ -6,6 +6,7 @@
 #include "NodeAnalysis.h"
 #include "FileManagement.h"
 #include "Helpers.h"
+#include "FileHandler.h"
 
 extern bool debug;
 
@@ -166,7 +167,7 @@ void UpdateEntityNodes(cv::Mat& bloodweb, std::vector<Node>& vectorOfNodes) {
 	// Create a vector of vectors storing circle information
 	// [0] x_center [1] y_center [2] radius
 	std::vector<cv::Vec3f> entityNodes;
-	cv::HoughCircles(thresholdImage, entityNodes, cv::HOUGH_GRADIENT, 1, bloodweb.rows / 24, 100, 10, 20, 35);
+	cv::HoughCircles(thresholdImage, entityNodes, cv::HOUGH_GRADIENT, 1, 80, 100, 10, 20, 35);
 
 	if (entityNodes.size() == 0) return;
 
@@ -283,10 +284,10 @@ void SetNodePriority(cv::Mat& imgBloodweb, Node& node) {
 		matcher->match(itemToFind_Descriptors, itemInBloodwebDescriptors, matches);
 
 		// Filter matches to minimum distance, form "good" matches
-		double min_dist = 100;
-		for (int i = 0; i < itemToFind_Descriptors.rows; i++) {
-			if (matches[i].distance < min_dist) min_dist = matches[i].distance;
-		}
+		//double min_dist = 100;
+		//for (int i = 0; i < itemToFind_Descriptors.rows; i++) {
+		//	if (matches[i].distance < min_dist) min_dist = matches[i].distance;
+		//}
 
 		// Create a vector storing all good matches
 		std::vector<cv::DMatch> good_matches;
@@ -313,6 +314,10 @@ void SetNodePriority(cv::Mat& imgBloodweb, Node& node) {
 	return;
 }
 
+int GetDistance(Node& node1, Node& node2) {
+	return cv::norm(node1.GetLocation() - node2.GetLocation());
+}
+
 std::vector<std::reference_wrapper<Node>> FindPotentialDependencyNodes(Node node, std::vector<Node>& vectorOfNodes) {	
 	// Initialise vector of potential nodes
 	std::vector<std::reference_wrapper<Node>> closestNodes;
@@ -324,15 +329,16 @@ std::vector<std::reference_wrapper<Node>> FindPotentialDependencyNodes(Node node
 	int ring = node.GetRing() - 1;
 	if (ring == 0) return closestNodes;
 
-	for (Node& ringNode : vectorOfNodes) {
-		if (ringNode.GetRing() != ring) continue;
-
-		if (std::abs(node.GetAngleFromCenter()) - std::abs(ringNode.GetAngleFromCenter()) < 80) {
-			float distance = cv::norm(node.GetLocation() - ringNode.GetLocation());
-			if(distance < 200) closestNodes.push_back(ringNode);
-			if (closestNodes.size() == 2) break;
-		}
+	// Add all nodes in inner ring to vector
+	for (Node& aNode : vectorOfNodes) {
+		if(aNode.GetRing() == ring) closestNodes.push_back(aNode);
 	}
+
+	// Sort vector based on distance to node
+	std::sort(closestNodes.begin(), closestNodes.end(), [&node](Node& node1, Node& node2) { return GetDistance(node, node1) < GetDistance(node, node2); });
+
+	// Choose the nearest two nodes as potential dependencies
+	closestNodes.erase(closestNodes.begin() + 2, closestNodes.end());
 
 	return closestNodes;
 }
@@ -340,28 +346,29 @@ std::vector<std::reference_wrapper<Node>> FindPotentialDependencyNodes(Node node
 void DetermineDependency(Node& node, std::vector<std::reference_wrapper<Node>>& potentialDependencies, cv::Mat bloodwebCanny) {
 	// Center point of current node
 	cv::Point nodeCenter(node.GetLocation().x, node.GetLocation().y);
+	cv::Mat cannyClone = bloodwebCanny.clone();
 
 	for (int i = 0; i < potentialDependencies.size(); i++) {
 		// Center point of potential dependency
 		cv::Point dependencyCenter(potentialDependencies[i].get().GetLocation().x, potentialDependencies[i].get().GetLocation().y);
 
 		// Mask out the nodes themselves since they can interfere with the mean colour grabbed later on
-		cv::circle(bloodwebCanny, dependencyCenter, 40, cv::Scalar(0, 0, 0), cv::FILLED);
-		cv::circle(bloodwebCanny, nodeCenter, 40, cv::Scalar(0, 0, 0), cv::FILLED);
+		cv::circle(cannyClone, dependencyCenter, 40, cv::Scalar(0, 0, 0), cv::FILLED);
+		cv::circle(cannyClone, nodeCenter, 40, cv::Scalar(0, 0, 0), cv::FILLED);
 
 		// Create a mask where the line for a connection would be between the nodes
-		cv::Mat contourMask = cv::Mat::zeros(bloodwebCanny.size(), CV_8UC1);
+		cv::Mat contourMask = cv::Mat::zeros(cannyClone.size(), CV_8UC1);
 		cv::line(contourMask, nodeCenter, dependencyCenter, cv::Scalar(255, 255, 255), 3);
 
 		// Grab the mean colour of the node connection in BGR
-		cv::Scalar meanCol = mean(bloodwebCanny, contourMask);
+		cv::Scalar meanCol = mean(cannyClone, contourMask);
 
-		if (meanCol[0] > 15) {
+		if (meanCol[0] > 18) {
 			// Add current node as a child node to the dependency
 			potentialDependencies[i].get().AddChildNode(&node);
 			// Add dependency node as parent of current node
 			node.AddParentNode(&potentialDependencies[i].get());
 		}
 	}
-	std::cout << "\n" << std::endl;
+	//std::cout << "\n" << std::endl;
 }

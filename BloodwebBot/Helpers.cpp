@@ -1,6 +1,5 @@
 #include <Windows.h>
 #include <iostream>
-#include <filesystem>
 #include <string>
 #include <vector>
 #include <opencv2/imgproc.hpp>
@@ -13,7 +12,6 @@
 extern bool debug;
 
 cv::Mat ScreenshotBloodweb(int x, int y, int w, int h);
-std::vector<std::string> ListFiles(std::string path);
 void FillNodesVector(std::vector<Node>& vectorOfNodes, cv::Mat& bloodwebScreenshot);
 void ListNodeInfo(Node node);
 
@@ -58,39 +56,6 @@ cv::Mat ScreenshotBloodweb(int x, int y, int w, int h) {
 }
 
 /**
-* Returns a vector containing paths to all files in a directory
-*
-* @param[in] path: directory to look for files in
-* @return std::vector<string> vector of paths to files in directory
-*/
-std::vector<std::string> ListFiles(std::string path) {
-	std::vector<std::string> files;
-
-	for (const auto& entry : std::filesystem::directory_iterator(path)) {
-		files.push_back(entry.path().u8string());
-	}
-
-	return files;
-}
-
-/**
-* Creates directories for priority items if they have not already been made
-*/
-void PerformFirstTimeSetup() {
-	if (!std::filesystem::exists("Resources")) {
-		std::filesystem::create_directories("Resources");
-		std::filesystem::create_directories("Resources/Common");
-		std::filesystem::create_directories("Resources/Uncommon");
-		std::filesystem::create_directories("Resources/Rare");
-		std::filesystem::create_directories("Resources/Very Rare");
-		std::filesystem::create_directories("Resources/Iridescent");
-
-		std::cout << "Looks like it's your first time launching this program!\n\nThe program has created a folder called resources - deletion of this folder (or deletion of the folders inside of it) \nwill result in a crash.\n\nPress 2 on the next screen for more information!\n" << std::endl;;
-		system("pause");
-	}
-}
-
-/**
 * Finds all properties about all nodes in the bloodweb
 *
 * 1. Detect locations of nodes
@@ -107,8 +72,9 @@ void FillNodesVector(std::vector<Node>& vectorOfNodes, cv::Mat& bloodwebScreensh
 
 	// Screenshot bloodweb + processing
 	bloodwebScreenshot = ScreenshotBloodweb(IMAGE_ORIGIN_X, IMAGE_ORIGIN_Y, IMAGE_WIDTH, IMAGE_HEIGHT);
+
 	cv::blur(bloodwebScreenshot, imgBlur, cv::Size(2, 2));
-	cv::Canny(imgBlur, imgCanny, 60, 150);
+	cv::Canny(imgBlur, imgCanny, 80, 120); // 60, 150
 
 	imgEdit = bloodwebScreenshot.clone();
 
@@ -165,7 +131,9 @@ void FillNodesVector(std::vector<Node>& vectorOfNodes, cv::Mat& bloodwebScreensh
 			ListNodeInfo(vectorOfNodes[i]);
 		}
 
-		cv::imshow("imgEdit", imgEdit);
+		cv::imshow("Bloodweb", bloodwebScreenshot);
+		cv::imshow("Bloodweb, Canny", imgCanny);
+		cv::imshow("Bloodweb, Detected", imgEdit);
 		cv::waitKey(0);
 	}
 }
