@@ -8,7 +8,7 @@
 * 
 *	MAIN:
 * 	cv::Point location;
-*	bool accessible;
+*	bool unattainable;
 *   bool purchasable;
 *	int priority;
 *	std::vector<Node*> childNodes;

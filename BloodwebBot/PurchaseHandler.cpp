@@ -58,8 +58,6 @@ void PurchaseNodes(std::vector<Node>& bloodwebNodes, cv::Mat& bloodwebScreenshot
 	PurchaseImmediatelyCheapestNodes(bloodwebNodes, bloodwebScreenshot);
 	if (CheckForManualStop() || bloodpoints <= 0) return;
 
-	
-
 	std::cout << "Bloodweb complete." << std::endl;
 	Sleep(2000);
 

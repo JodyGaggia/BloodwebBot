@@ -54,25 +54,30 @@ HSVColor RGBtoHSV(float& fR, float& fG, float& fB) {
 }
 
 /**
-* Finds the location of all nodes on screen
+* Finds the location of all nodes in the given screenshot
 *
-* @param[in] imgBloodwebCanny: cannied image of bloodweb area
-* @return Vector of 3-dimensional vectors which each store x,y of center point and detected radius of a node (IN THE GIVEN SCREENSHOT)
+* @param[in] bloodweb: image of bloodweb area
+* @return Vector of 3-dimensional vectors which each store x,y of center point and detected radius of a node
 */
-std::vector<cv::Vec3f> GetNodeLocations(cv::Mat& imgBloodwebCanny) {
+std::vector<cv::Vec3f> GetNodeLocations(cv::Mat bloodweb) {
+	cv::Mat imgBlur, imgCanny;
+
+	cv::blur(bloodweb, imgBlur, cv::Size(2, 2)); // 2,2
+	cv::Canny(imgBlur, imgCanny, 80, 120); // 80, 120
+
 	// Create a vector of vectors storing circle information
 	// [0] x_center [1] y_center [2] radius
 	std::vector<cv::Vec3f> allNodesLocations;
-	cv::HoughCircles(imgBloodwebCanny, allNodesLocations, cv::HOUGH_GRADIENT, 1, imgBloodwebCanny.rows / 24, 100, 30, 32, 45);
+	cv::HoughCircles(imgCanny, allNodesLocations, cv::HOUGH_GRADIENT, 1, bloodweb.rows / 24, 100, 30, 32, 45);
 
 	return allNodesLocations;
 }
 
 /**
-* Crops bloodweb to a given node
+* Crops a bloodweb screenshot to a given node
 *
 * @param[in] imgBloodweb: image of the bloodweb
-* @param[in] nodeLocationInfo: 3-dimensional vector storing centre point and radius of node IN THE BLOODWEB IMAGE
+* @param[in] nodeLocationInfo: 3-dimensional vector storing centre point and radius of node
 * @return image of given node (80x80)
 */
 cv::Mat CropBloodwebToNode(cv::Mat& imgBloodweb, Node& node) {
@@ -157,11 +162,10 @@ void SetNodeRarity(cv::Mat& imgBloodweb, Node& node) {
 }
 
 /*
-* Marks nodes in the given vector as entity consumed
+* Determines which nodes have been consumed by the entity and updates the 'unattainable' property on these node objects
 * 
 * @param[in] bloodweb: Screenshot of the bloodweb
 * @param[in] vectorOfNodes: A vector of all the nodes which have been detected in the screenshot
-* @return void
 */
 void UpdateEntityNodes(cv::Mat& bloodweb, std::vector<Node>& vectorOfNodes) {
 	cv::Mat grayscaleBloodweb, grayscaleBlurBloodweb, thresholdImage;
@@ -217,10 +221,10 @@ void UpdateEntityNodes(cv::Mat& bloodweb, std::vector<Node>& vectorOfNodes) {
 }
 
 /**
- * Returns a vector of matching keypoints between an item in the bloodweb and a reference item image
+ * Sets the 'isPriority' parameter on the input node object using images present in /Resources/
  *
- * @param values Container whose values are summed.
- * @return sum of `values`, or 0.0 if `values` is empty.
+ * @param[in] imgBloodweb: Screenshot of the bloodweb
+ * @param[in] node: Node to set the priority of
  */
 void SetNodePriority(cv::Mat& imgBloodweb, Node& node) {
 	// Crop bloodweb to node
