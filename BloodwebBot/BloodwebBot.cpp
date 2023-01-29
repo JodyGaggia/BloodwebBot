@@ -2,7 +2,6 @@
 #include <opencv2/imgproc.hpp>
 #include <string>
 #include "Node.h"
-#include "Helpers.h"
 #include "PurchaseHandler.h"
 #include "Calibration.h"
 #include "Constants.h"
@@ -11,7 +10,6 @@
 // Only need one instance of these in memory
 static cv::Mat bloodweb;
 static std::vector<Node> bloodwebNodes;
-static std::vector<std::reference_wrapper<Node>> priorityNodes;
 
 extern bool debug = false;
 
@@ -48,10 +46,9 @@ int main()
 		std::cin >> userResponse;
 
 		if (userResponse == 1){
-
 			while (1) {
 				std::string bloodpointsToSpend;
-				bool isNumber;
+				bool isNumber = true;
 
 				std::cout << "Number of bloodpoints to spend: ";
 				std::cin >> bloodpointsToSpend;
@@ -77,8 +74,7 @@ int main()
 			std::cout << "2) The bot will only work on a bloodweb where no nodes have been purchased." << std::endl;
 			std::system("pause");
 
-			FillNodesVector(bloodwebNodes, bloodweb);
-			PurchasePriorityNodes(bloodwebNodes, priorityNodes, bloodweb);
+			PurchaseNodes(bloodwebNodes, bloodweb);
 		}
 		else if (userResponse == 2) {
 			std::cout << "You can find the required images for items, addons, and offerings respectively from the links below," << std::endl;

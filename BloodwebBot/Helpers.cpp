@@ -73,18 +73,13 @@ void FillNodesVector(std::vector<Node>& vectorOfNodes, cv::Mat& bloodwebScreensh
 	// Screenshot bloodweb + processing
 	bloodwebScreenshot = ScreenshotBloodweb(IMAGE_ORIGIN_X, IMAGE_ORIGIN_Y, IMAGE_WIDTH, IMAGE_HEIGHT);
 
-	cv::blur(bloodwebScreenshot, imgBlur, cv::Size(2, 2));
-	cv::Canny(imgBlur, imgCanny, 80, 120); // 60, 150
+	cv::blur(bloodwebScreenshot, imgBlur, cv::Size(2, 2)); // 2,2
+	cv::Canny(imgBlur, imgCanny, 80, 120); // 80, 120
 
 	imgEdit = bloodwebScreenshot.clone();
 
 	// Grab locations of nodes
 	std::vector<cv::Vec3f> nodeLocations = GetNodeLocations(imgCanny);
-
-	// DEBUG: Draw circles around detected nodes
-	for (cv::Vec3f node : nodeLocations) {
-		cv::circle(imgEdit, cv::Point(node[0], node[1]), node[2], cv::Scalar(0, 255, 0), 3);
-	}
 
 	// Classify each detected node
 	for (int i = 0; i < nodeLocations.size(); i++) {
@@ -103,13 +98,13 @@ void FillNodesVector(std::vector<Node>& vectorOfNodes, cv::Mat& bloodwebScreensh
 		vectorOfNodes.push_back(currentNode);
 	}
 
-	UpdateEntityNodes(bloodwebScreenshot, vectorOfNodes);
 	// Sort in order of rarity
 	std::sort(vectorOfNodes.begin(), vectorOfNodes.end(), [](Node a, Node b) { return a.GetRarity() < b.GetRarity(); });
 
 	// Find all node dependencies
 	for (int i = 0; i < vectorOfNodes.size(); i++) {
 		Node& node = vectorOfNodes[i];
+		if (node.GetRing() == 1) continue;
 
 		std::vector<std::reference_wrapper<Node>> dependencies = FindPotentialDependencyNodes(node, vectorOfNodes);
 		DetermineDependency(node, dependencies, imgCanny);
@@ -126,6 +121,11 @@ void FillNodesVector(std::vector<Node>& vectorOfNodes, cv::Mat& bloodwebScreensh
 	}
 
 	if (debug) {
+		// DEBUG: Draw circles around detected nodes
+		for (cv::Vec3f node : nodeLocations) {
+			cv::circle(imgEdit, cv::Point(node[0], node[1]), node[2], cv::Scalar(0, 255, 0), 3);
+		}
+
 		// List info about all nodes
 		for (int i = 0; i < vectorOfNodes.size(); i++) {
 			ListNodeInfo(vectorOfNodes[i]);
@@ -135,6 +135,7 @@ void FillNodesVector(std::vector<Node>& vectorOfNodes, cv::Mat& bloodwebScreensh
 		cv::imshow("Bloodweb, Canny", imgCanny);
 		cv::imshow("Bloodweb, Detected", imgEdit);
 		cv::waitKey(0);
+		UpdateEntityNodes(bloodwebScreenshot, vectorOfNodes);
 	}
 }
 

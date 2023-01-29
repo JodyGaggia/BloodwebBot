@@ -156,6 +156,13 @@ void SetNodeRarity(cv::Mat& imgBloodweb, Node& node) {
 	node.SetRarity(rarity);
 }
 
+/*
+* Marks nodes in the given vector as entity consumed
+* 
+* @param[in] bloodweb: Screenshot of the bloodweb
+* @param[in] vectorOfNodes: A vector of all the nodes which have been detected in the screenshot
+* @return void
+*/
 void UpdateEntityNodes(cv::Mat& bloodweb, std::vector<Node>& vectorOfNodes) {
 	cv::Mat grayscaleBloodweb, grayscaleBlurBloodweb, thresholdImage;
 	cv::Mat imgEdit = bloodweb.clone();
@@ -314,10 +321,25 @@ void SetNodePriority(cv::Mat& imgBloodweb, Node& node) {
 	return;
 }
 
+/*
+* Returns the Euclidean distance between two nodes
+*
+* @param[in] node1: Node from
+* @param[in] node2: Node to
+* @return int: Euclidean distance from node1 to node 2
+*/
 int GetDistance(Node& node1, Node& node2) {
 	return cv::norm(node1.GetLocation() - node2.GetLocation());
 }
 
+/*
+* Returns the two nearest nodes in the ring immediately beneath that of the input node. This can be used to detect pathways between nodes.
+* 
+* @param[in] node: Node to find potential parents of
+* @param[in] vectorOfNodes: Vector of all detected nodes
+* @return std::vector<std::reference_wrapper<Node>>: A vector of references (of nodes in vectorOfNodes) to the two nearest nodes in the ring immediately beneath
+* the input
+*/
 std::vector<std::reference_wrapper<Node>> FindPotentialDependencyNodes(Node node, std::vector<Node>& vectorOfNodes) {	
 	// Initialise vector of potential nodes
 	std::vector<std::reference_wrapper<Node>> closestNodes;
@@ -343,6 +365,18 @@ std::vector<std::reference_wrapper<Node>> FindPotentialDependencyNodes(Node node
 	return closestNodes;
 }
 
+/*
+* Assigns parent nodes to the input node and, if a node is a parent, assigns this node as its child
+* 
+* 1. Canny the image
+* 2. Mask out the space between the two nodes (the input node and its potential parent)
+* 3. Look at the mean colour - if it's above some threshold then determine that a connection is present
+* 
+* @param[in] node: Node to find parents of
+* @param[in] potentialDependencies: Potential parents of this node. Find these using FindPotentialDependencyNodes
+* @param[in] bloodwebCanny: A cannied image of the bloodweb
+* @return void
+*/
 void DetermineDependency(Node& node, std::vector<std::reference_wrapper<Node>>& potentialDependencies, cv::Mat bloodwebCanny) {
 	// Center point of current node
 	cv::Point nodeCenter(node.GetLocation().x, node.GetLocation().y);
@@ -370,5 +404,4 @@ void DetermineDependency(Node& node, std::vector<std::reference_wrapper<Node>>& 
 			node.AddParentNode(&potentialDependencies[i].get());
 		}
 	}
-	//std::cout << "\n" << std::endl;
 }
